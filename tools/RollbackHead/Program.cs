@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2025 Demerzel Solutions Limited
 // SPDX-License-Identifier: LGPL-3.0-only
 
+using System.Buffers.Binary;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
 using Nethermind.Core.Extensions;
@@ -171,8 +172,10 @@ for (long blockNum = startBlock; blockNum >= Math.Max(0, startBlock - maxRollbac
     BlockInfo mainBlock = levelInfo.BlockInfos[0];
     Hash256 blockHash = mainBlock.BlockHash;
 
-    // Read the header to get the state root (headers DB is keyed by block number, not hash)
-    byte[]? headerRlp = headersDb.Get(blockKey);
+    // Read the header to get the state root.
+    // Headers DB primary key: [8-byte BE block number][32-byte hash] (40 bytes total)
+    // Fallback key: [32-byte hash] (legacy/backward compat)
+    byte[]? headerRlp = GetHeader(headersDb, blockNum, blockHash);
     if (headerRlp is null)
     {
         Console.WriteLine($"  Block {blockNum}: header not found for hash {blockHash}, skipping");
@@ -287,6 +290,21 @@ static string? ResolveStateDbPath(string basePath)
     }
 
     return bestPath;
+}
+
+static byte[]? GetHeader(RocksDb headersDb, long blockNum, Hash256 blockHash)
+{
+    // Primary key: [8-byte big-endian block number][32-byte block hash]
+    byte[] compositeKey = new byte[40];
+    BinaryPrimitives.WriteInt64BigEndian(compositeKey.AsSpan(0, 8), blockNum);
+    blockHash.Bytes.ToArray().CopyTo(compositeKey, 8);
+    byte[]? val = headersDb.Get(compositeKey);
+    if (val is not null)
+        return val;
+
+    // Fallback: hash-only key (legacy entries)
+    val = headersDb.Get(blockHash.Bytes.ToArray());
+    return val;
 }
 
 static bool CheckStateRootExists(RocksDb stateDb, Hash256 stateRoot)
