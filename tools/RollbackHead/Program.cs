@@ -240,7 +240,7 @@ static bool CheckStateRootExists(RocksDb stateDb, Hash256 stateRoot)
     halfPathKey[0] = 0; // section: state, path.Length(0) <= TopStateBoundary(5)
     // bytes 1..8 are zero (empty TreePath)
     halfPathKey[9] = 0; // path length
-    stateRoot.Bytes.CopyTo(halfPathKey.AsSpan(10));
+    stateRoot.Bytes.ToArray().CopyTo(halfPathKey, 10);
     val = stateDb.Get(halfPathKey);
     if (val is not null)
         return true;
