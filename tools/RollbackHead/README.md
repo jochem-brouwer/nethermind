@@ -1,0 +1,1 @@
+Note: all this code is written by Claude Code (AI), not me, I only sent the prompts.
