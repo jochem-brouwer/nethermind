@@ -92,17 +92,48 @@ if (currentPersistedBlock is not null)
 }
 else
 {
-    // Need to find the block number from the head hash - look it up in headers
-    byte[]? headerRlp = headersDb.Get(currentHeadHash!.Bytes.ToArray());
-    if (headerRlp is null)
+    // BestPersistedState not set. Find the highest block number by reverse-scanning blockInfosDb.
+    // Keys are big-endian block numbers (variable length, no leading zeros).
+    // Special keys (16-byte and 32-byte all-zeros) sort before block 1, so the last
+    // key in the DB is the highest block number.
+    startBlock = -1;
+    using (Iterator iter = blockInfosDb.NewIterator())
     {
-        Console.Error.WriteLine("ERROR: Cannot find header for current head hash.");
+        iter.SeekToLast();
+        while (iter.Valid())
+        {
+            byte[] key = iter.Key();
+            // Skip special keys: 16-byte (StateHeadHash) and 32-byte (HeadAddress), both all zeros
+            bool isSpecial = key.Length == 16 || key.Length == 32;
+            if (isSpecial)
+            {
+                bool allZeros = true;
+                for (int i = 0; i < key.Length; i++)
+                {
+                    if (key[i] != 0) { allZeros = false; break; }
+                }
+                if (allZeros)
+                {
+                    iter.Prev();
+                    continue;
+                }
+            }
+            // Decode block number from big-endian bytes
+            long num = 0;
+            for (int i = 0; i < key.Length; i++)
+            {
+                num = (num << 8) | key[i];
+            }
+            startBlock = num;
+            break;
+        }
+    }
+    if (startBlock < 0)
+    {
+        Console.Error.WriteLine("ERROR: blockInfos DB appears empty. No blocks found.");
         return 1;
     }
-    Rlp.ValueDecoderContext headerCtx = headerRlp.AsRlpValueContext();
-    BlockHeader header = Rlp.GetValueDecoder<BlockHeader>()!.Decode(ref headerCtx)!;
-    startBlock = header.Number;
-    Console.WriteLine($"Resolved head hash to block number: {startBlock}");
+    Console.WriteLine($"Highest block found in blockInfosDb: {startBlock}");
 }
 
 Console.WriteLine($"Walking backwards from block {startBlock}, max {maxRollback} blocks...");
@@ -140,8 +171,8 @@ for (long blockNum = startBlock; blockNum >= Math.Max(0, startBlock - maxRollbac
     BlockInfo mainBlock = levelInfo.BlockInfos[0];
     Hash256 blockHash = mainBlock.BlockHash;
 
-    // Read the header to get the state root
-    byte[]? headerRlp = headersDb.Get(blockHash.Bytes.ToArray());
+    // Read the header to get the state root (headers DB is keyed by block number, not hash)
+    byte[]? headerRlp = headersDb.Get(blockKey);
     if (headerRlp is null)
     {
         Console.WriteLine($"  Block {blockNum}: header not found for hash {blockHash}, skipping");
