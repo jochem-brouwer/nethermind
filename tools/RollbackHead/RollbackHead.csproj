@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsTestingPlatformApplication>false</IsTestingPlatformApplication>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="RocksDB" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Nethermind\Nethermind.Core\Nethermind.Core.csproj" />
+    <ProjectReference Include="..\..\src\Nethermind\Nethermind.Serialization.Rlp\Nethermind.Serialization.Rlp.csproj" />
+    <ProjectReference Include="..\..\src\Nethermind\Nethermind.Trie\Nethermind.Trie.csproj" />
+  </ItemGroup>
+
+</Project>
