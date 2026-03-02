@@ -98,7 +98,7 @@ else
         return 1;
     }
     Rlp.ValueDecoderContext headerCtx = headerRlp.AsRlpValueContext();
-    BlockHeader header = Rlp.GetValueDecoder<BlockHeader>().Decode(ref headerCtx);
+    BlockHeader header = Rlp.GetValueDecoder<BlockHeader>()!.Decode(ref headerCtx)!;
     startBlock = header.Number;
     Console.WriteLine($"Resolved head hash to block number: {startBlock}");
 }
@@ -106,8 +106,8 @@ else
 Console.WriteLine($"Walking backwards from block {startBlock}, max {maxRollback} blocks...");
 Console.WriteLine();
 
-IRlpValueDecoder<ChainLevelInfo> chainLevelDecoder = Rlp.GetValueDecoder<ChainLevelInfo>();
-IRlpValueDecoder<BlockHeader> headerDecoder = Rlp.GetValueDecoder<BlockHeader>();
+IRlpValueDecoder<ChainLevelInfo> chainLevelDecoder = Rlp.GetValueDecoder<ChainLevelInfo>()!;
+IRlpValueDecoder<BlockHeader> headerDecoder = Rlp.GetValueDecoder<BlockHeader>()!;
 
 long? foundBlock = null;
 Hash256? foundHash = null;
@@ -127,7 +127,7 @@ for (long blockNum = startBlock; blockNum >= Math.Max(0, startBlock - maxRollbac
     }
 
     Rlp.ValueDecoderContext levelCtx = levelData.AsRlpValueContext();
-    ChainLevelInfo levelInfo = chainLevelDecoder.Decode(ref levelCtx, RlpBehaviors.AllowExtraBytes);
+    ChainLevelInfo levelInfo = chainLevelDecoder.Decode(ref levelCtx, RlpBehaviors.AllowExtraBytes)!;
 
     if (!levelInfo.HasBlockOnMainChain)
     {
@@ -147,7 +147,7 @@ for (long blockNum = startBlock; blockNum >= Math.Max(0, startBlock - maxRollbac
     }
 
     Rlp.ValueDecoderContext headerCtx = headerRlp.AsRlpValueContext();
-    BlockHeader header = headerDecoder.Decode(ref headerCtx);
+    BlockHeader header = headerDecoder.Decode(ref headerCtx)!;
 
     if (header.StateRoot is null)
     {
