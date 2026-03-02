@@ -28,7 +28,7 @@ int maxRollback = args.Length > 1 ? int.Parse(args[1]) : 256;
 
 string blockInfosPath = Path.Combine(basePath, "blockInfos");
 string headersPath = Path.Combine(basePath, "headers");
-string statePath = Path.Combine(basePath, "state");
+string? statePath = ResolveStateDbPath(basePath);
 
 if (!Directory.Exists(blockInfosPath))
 {
@@ -40,11 +40,13 @@ if (!Directory.Exists(headersPath))
     Console.Error.WriteLine($"ERROR: headers DB not found at {headersPath}");
     return 1;
 }
-if (!Directory.Exists(statePath))
+if (statePath is null)
 {
-    Console.Error.WriteLine($"ERROR: state DB not found at {statePath}");
+    Console.Error.WriteLine($"ERROR: state DB not found at {Path.Combine(basePath, "state")}");
+    Console.Error.WriteLine("Looked for CURRENT file in state/ and state/<N>/ subdirectories.");
     return 1;
 }
+Console.WriteLine($"State DB path: {statePath}");
 
 // Keys used by BlockTree for special entries in blockInfos DB
 // StateHeadHashDbEntryAddress = new byte[16] (16 zero bytes)
@@ -223,6 +225,38 @@ Console.WriteLine();
 Console.WriteLine("You can now restart the Nethermind node.");
 
 return 0;
+
+// Resolves the actual state DB path, handling FullPruningDb's indexed subdirectories.
+// The state DB can be at: state/ (direct), or state/<N>/ (full pruning indexed).
+// See FullPruningInnerDbFactory.GetStartingIndex
+static string? ResolveStateDbPath(string basePath)
+{
+    string stateDir = Path.Combine(basePath, "state");
+    if (!Directory.Exists(stateDir))
+        return null;
+
+    // Direct DB: state/ contains CURRENT file
+    if (File.Exists(Path.Combine(stateDir, "CURRENT")))
+        return stateDir;
+
+    // Full pruning indexed: state/<N>/ subdirectories, pick the lowest numbered one
+    int bestIndex = int.MaxValue;
+    string? bestPath = null;
+    foreach (string subDir in Directory.GetDirectories(stateDir))
+    {
+        string name = Path.GetFileName(subDir);
+        if (int.TryParse(name, out int index) && File.Exists(Path.Combine(subDir, "CURRENT")))
+        {
+            if (index < bestIndex)
+            {
+                bestIndex = index;
+                bestPath = subDir;
+            }
+        }
+    }
+
+    return bestPath;
+}
 
 static bool CheckStateRootExists(RocksDb stateDb, Hash256 stateRoot)
 {
