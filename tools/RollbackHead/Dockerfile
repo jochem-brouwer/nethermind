@@ -8,6 +8,7 @@ COPY src/Nethermind/Nethermind.Logging src/Nethermind/Nethermind.Logging
 COPY src/Nethermind/Nethermind.Db src/Nethermind/Nethermind.Db
 COPY src/Nethermind/Nethermind.Serialization.Rlp src/Nethermind/Nethermind.Serialization.Rlp
 COPY src/Nethermind/Nethermind.Trie src/Nethermind/Nethermind.Trie
+COPY tools/Directory.Build.props tools/Directory.Build.props
 COPY tools/RollbackHead tools/RollbackHead
 COPY Directory.*.props ./
 COPY global.json .
